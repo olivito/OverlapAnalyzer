@@ -24,6 +24,19 @@ process.maxEvents = cms.untracked.PSet(
     input = cms.untracked.int32(-1)
 )
 
+# Get command line options
+from FWCore.ParameterSet.VarParsing import VarParsing
+options = VarParsing ('analysis')
+
+options.register(
+    'sample',
+    'qcd_30to50',
+    VarParsing.multiplicity.singleton,
+    VarParsing.varType.string,
+    'sample to run')
+
+options.parseArguments()
+
 # Input source
 process.source = cms.Source("PoolSource",
 #   fileNames = cms.untracked.vstring('file:/hadoop/cms/store/user/olivito/HLT/TkMu/WToMuNu_Tune4C_13TeV-pythia8_Fall13dr-tsg_PU40bx50_POSTLS162_V2-v1_savel1/output_6_1_qCm.root'),
@@ -31,22 +44,29 @@ process.source = cms.Source("PoolSource",
    secondaryFileNames = cms.untracked.vstring()
 )
 
-basedir = '/nfs-7/userdata/olivito/HLT/allhadronic/v4/'
+basedir = '/nfs-7/userdata/olivito/HLT/allhadronic/v5/'
 
-#sample,xsec = 'dy', 1586.  
 
-#sample,xsec = 'wmunu', 16100.
-#sample,xsec = 'qcd_30to50', 161500000. 
-#sample,xsec = 'qcd_50to80', 22110000. 
-#sample,xsec = 'qcd_80to120', 3000114. 
-#sample,xsec = 'qcd_120to170', 493200. 
-#sample,xsec = 'qcd_170to300', 120300. 
-sample,xsec = 'qcd_300to470', 7475. 
-#sample,xsec = 'qcd_470to600', 587.1 
-#sample,xsec = 'qcd_600to800', 167. 
-#sample,xsec = 'qcd_800to1000', 28.25 
-#sample,xsec = 'qcd_1000to1400', 8.195 
+xsecs = {
+    'dy' : 1586. ,
+    'wmunu' : 16100.,
+    'qcd_30to50' : 161500000. ,
+    'qcd_50to80' : 22110000. ,
+    'qcd_80to120' : 3000114. ,
+    'qcd_120to170' : 493200. ,
+    'qcd_170to300' : 120300., 
+    'qcd_300to470' : 7475. ,
+    'qcd_470to600' : 587.1 ,
+    'qcd_600to800' : 167. ,
+    'qcd_800to1000' : 28.25 ,
+    'qcd_1000to1400' : 8.195
+}
 
+if not options.sample in xsecs:
+    print 'ERROR: unknown sample: ' + options.sample
+    exit(1)
+
+print 'sample is: ',options.sample,', xsec: ',xsecs[options.sample]
 
 #inputs = glob(basedir + '/qcd_50to80*.root')
 #inputs = glob(basedir + '/qcd_80to120*.root')
@@ -60,7 +80,7 @@ sample,xsec = 'qcd_300to470', 7475.
 #inputs = glob(basedir + '/wmunu*.root')
 
 from glob import glob
-inputs = glob(basedir + '/' + sample + '*.root')
+inputs = glob(basedir + '/' + options.sample + '*.root')
 for i in inputs:
     process.source.fileNames.append('file:' + i)
 
@@ -82,18 +102,18 @@ process.configurationMetadata = cms.untracked.PSet(
 # Output definition
 
 process.TFileService = cms.Service("TFileService",
-                                       fileName = cms.string('histos_overlap_'+sample+'_allhadronic_v4_noalphat.root')
+                                       fileName = cms.string('histos_overlap_'+options.sample+'_allhadronic_v5.root')
                                    )
 
 process.overlapAnalyzer.processName = cms.string('reHLT')
 process.overlapAnalyzer.triggerResults = cms.InputTag("TriggerResults","","reHLT")
 #process.overlapAnalyzer.hltTriggerNames = cms.vstring('HLT_PFHT900_v1', 'HLT_PFHT650_4Jet_v1')
-process.overlapAnalyzer.xsec = cms.double(xsec)
+process.overlapAnalyzer.xsec = cms.double(xsecs[options.sample])
 process.overlapAnalyzer.verbose = cms.bool(False)
 
 process.overlapAnalyzer.hltTriggerNames = cms.vstring(
   'HLT_PFHT900_v1',
-  'HLT_PFHT650_4Jet_v1',
+  'HLT_PFHT750_4Jet_v1',
   'HLT_PFHT350_PFMET120_NoiseCleaned_v1',
   'HLT_DiCentralPFJet70_PFMET120_NoiseCleaned_v1',
   'HLT_HT200_DiJet90_AlphaT0p57_v1',
@@ -101,6 +121,9 @@ process.overlapAnalyzer.hltTriggerNames = cms.vstring(
   'HLT_HT300_DiJet90_AlphaT0p53_v1',
   'HLT_HT350_DiJet90_AlphaT0p52_v1',
   'HLT_HT400_DiJet90_AlphaT0p51_v1',
+  'HLT_RsqMR300_Rsq0p09_MR200_v1',
+  'HLT_RsqMR300_Rsq0p09_MR200_4jet_v1',
+  'HLT_Rsq0p36_v1',
   'HLT_PFJet450_v1',
   'HLT_CaloJet500_NoJetID_v1',
   'HLT_AK8PFJet360TrimMod_Mass30_v1',
