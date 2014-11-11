@@ -1,0 +1,9 @@
+<library   file="*.cc" name="OverlapAnalyzerPlugins">
+  <use   name="HLTrigger/HLTcore"/>
+  <use   name="FWCore/PrescaleService"/>
+  <use   name="FWCore/ServiceRegistry"/>
+  <use   name="FWCore/Utilities"/>
+  <use   name="CommonTools/UtilAlgos"/>
+  <use   name="PhysicsTools/UtilAlgos"/>
+  <flags   EDM_PLUGIN="1"/>
+</library>
