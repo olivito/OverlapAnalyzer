@@ -57,6 +57,7 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   HLTConfigProvider hltConfig_;
   TH1D* h_menurate_;
   TH1D* h_rates_;
+  TH1D* h_excl_rates_;
   TH2D* h_overlaps_;
   unsigned int ntrigs_;
   unsigned int nevents_;

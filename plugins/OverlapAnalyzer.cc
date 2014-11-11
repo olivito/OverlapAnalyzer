@@ -50,11 +50,13 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
   edm::Service<TFileService> fs;
   h_menurate_ = fs->make<TH1D>("h_menurate" , ";Total Menu; Rate [Hz]" , 2 , -0.5 , 1.5 );
   h_rates_ = fs->make<TH1D>("h_rates" , ";; Rate [Hz]" , ntrigs_ , 0. , ntrigs_ );
+  h_excl_rates_ = fs->make<TH1D>("h_excl_rates" , ";; Exclusive Rate [Hz]" , ntrigs_ , 0. , ntrigs_ );
   h_overlaps_ = fs->make<TH2D>("h_overlaps" , ";;; Rate [Hz]" , ntrigs_ , 0. , ntrigs_ , ntrigs_ , 0. , ntrigs_ );
 
   // axis bin labels
   for (unsigned int itrig = 0; itrig < ntrigs_; ++itrig) {
     h_rates_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
+    h_excl_rates_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
     h_overlaps_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
     h_overlaps_->GetYaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
   }
@@ -119,16 +121,33 @@ OverlapAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   // double loop over triggers to see overlaps
   bool pass_event = false;
 
+  // to avoid retrieving the trigger results N^2 times, 
+  //  loop once and fill a vector with results
+  //  sanity check: vector size == trigger name vector size
+  std::vector<int> trigResults;
   for (unsigned int itrig=0; itrig < ntrigs_; ++itrig) {
-    bool pass1 = analyzeTrigger(iEvent,iSetup,hltTriggerNames_.at(itrig));
+    trigResults.push_back((int)analyzeTrigger(iEvent,iSetup,hltTriggerNames_.at(itrig)));
+  }
+
+  if (trigResults.size() != ntrigs_) {
+    std::cerr << "ERROR: mismatch in ntrigs.  nresults: " << trigResults.size()
+	      << ", ntrigs: " << ntrigs_ << std::endl;
+    return;
+  }
+
+  for (unsigned int itrig=0; itrig < ntrigs_; ++itrig) {
+    bool pass1 = bool(trigResults.at(itrig));
     if (pass1) {
       h_rates_->Fill(itrig);
       pass_event = true;
     }
+    bool pass_other = false;
     for (unsigned int jtrig=0; jtrig < ntrigs_; ++jtrig) {
-      bool pass2 = analyzeTrigger(iEvent,iSetup,hltTriggerNames_.at(jtrig));
+      bool pass2 = bool(trigResults.at(jtrig));
       if (pass1 && pass2) h_overlaps_->Fill(itrig,jtrig);
+      if (pass2 && (itrig != jtrig)) pass_other = true;
     }
+    if (pass1 && !pass_other) h_excl_rates_->Fill(itrig);
   }
 
   // all events
@@ -201,6 +220,7 @@ void OverlapAnalyzer::endJob() {
   double norm = ilumi * xs / double(nevents_);
   h_menurate_->Scale(norm);
   h_rates_->Scale(norm);
+  h_excl_rates_->Scale(norm);
   h_overlaps_->Scale(norm);
 
 }
