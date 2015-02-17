@@ -50,6 +50,7 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   std::vector<std::string> hltTriggerNames_;
   edm::InputTag triggerResultsTag_;
   double xsec_;
+  double lumi_;
   bool verbose_;
 
   /// additional class data memebers

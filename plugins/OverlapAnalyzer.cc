@@ -27,6 +27,7 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
   hltTriggerNames_(ps.getParameter<std::vector<std::string>>("hltTriggerNames")),
   triggerResultsTag_(ps.getParameter<edm::InputTag>("triggerResults")),
   xsec_(ps.getParameter<double>("xsec")),
+  lumi_(ps.getParameter<double>("lumi")),
   verbose_(ps.getParameter<bool>("verbose"))
 {
   using namespace std;
@@ -44,6 +45,7 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
   cout << endl
        << "   TriggerResultsTag = " << triggerResultsTag_.encode() << endl
        << "   xsec = " << xsec_ << endl
+       << "   lumi = " << lumi_ << endl
        << "   Verbose = " << verbose_ << endl;
 
   // histogram setup
@@ -215,9 +217,9 @@ bool OverlapAnalyzer::analyzeTrigger(const edm::Event& iEvent, const edm::EventS
 //____________________________________________________________________________
 void OverlapAnalyzer::endJob() {
 
-  double ilumi = 1.4e34;
+  //  double ilumi = 1.4e34;
   double xs = xsec_ * 1.e-36;
-  double norm = ilumi * xs / double(nevents_);
+  double norm = lumi_ * xs / double(nevents_);
   h_menurate_->Scale(norm);
   h_rates_->Scale(norm);
   h_excl_rates_->Scale(norm);
