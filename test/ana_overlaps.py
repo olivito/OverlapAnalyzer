@@ -1,8 +1,3 @@
-# Auto generated configuration file
-# using: 
-# Revision: 1.20 
-# Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: RelVal --step=HLT:GRun --conditions=auto:hltonline_GRun --filein=file:/tas/olivito/data/RAW/Run2012D/DoubleMu/16951828-0D32-E211-A4C9-5404A63886B1.root --custom_conditions= --fileout=RelVal_HLT_GRun_DATA_doublemu_v2.root --number=100 --data --no_exec --datatier SIM-DIGI-RAW-HLTDEBUG --eventcontent=HLTDEBUG --customise=HLTrigger/Configuration/CustomConfigs.L1THLT --scenario=pp --python_filename=RelVal_HLT_GRun_DATA_test2.py --processName=HLT1
 import FWCore.ParameterSet.Config as cms
 
 process = cms.Process('HLTANALYZER')
@@ -35,6 +30,20 @@ options.register(
     VarParsing.varType.string,
     'sample to run')
 
+options.register(
+    'basedir',
+    '/nfs-7/userdata/olivito/HLT/had_ntuple_740/v1/62X/PU40/ECAL_Mf_HCALM3_JEC/',
+    VarParsing.multiplicity.singleton,
+    VarParsing.varType.string,
+    'input dir')
+
+options.register(
+    'label',
+    'had_recotest_v2_ECAL_Mf_JEC',
+    VarParsing.multiplicity.singleton,
+    VarParsing.varType.string,
+    'label for output')
+
 options.parseArguments()
 
 # Input source
@@ -44,22 +53,22 @@ process.source = cms.Source("PoolSource",
    secondaryFileNames = cms.untracked.vstring()
 )
 
-basedir = '/nfs-7/userdata/olivito/HLT/allhadronic/v5/'
-
-
 xsecs = {
-    'dy' : 1586. ,
-    'wmunu' : 16100.,
-    'qcd_30to50' : 161500000. ,
-    'qcd_50to80' : 22110000. ,
-    'qcd_80to120' : 3000114. ,
-    'qcd_120to170' : 493200. ,
-    'qcd_170to300' : 120300., 
-    'qcd_300to470' : 7475. ,
-    'qcd_470to600' : 587.1 ,
-    'qcd_600to800' : 167. ,
-    'qcd_800to1000' : 28.25 ,
-    'qcd_1000to1400' : 8.195
+    # 'dyee' : 6960. ,
+    # 'wenu' : 16000.,
+    # 'qcdem_20to30' : 677300000. * 0.01029 ,
+    # 'qcdem_30to80' : 185900000. * 0.06071 ,
+    # 'qcdem_80to170' : 3529000. * 0.15443 ,
+    'qcd_pt30to50' : 161500000. ,
+    'qcd_pt50to80' : 22110000. ,
+    'qcd_pt80to120' : 3000114. ,
+    'qcd_pt120to170' : 493200. ,
+    'qcd_pt170to300' : 120300., 
+    'qcd_pt300to470' : 7475. ,
+    'qcd_pt470to600' : 587.1 ,
+    'qcd_pt600to800' : 167. ,
+    'qcd_pt800to1000' : 28.25 ,
+    # 'qcd_1000to1400' : 8.195
 }
 
 if not options.sample in xsecs:
@@ -68,19 +77,8 @@ if not options.sample in xsecs:
 
 print 'sample is: ',options.sample,', xsec: ',xsecs[options.sample]
 
-#inputs = glob(basedir + '/qcd_50to80*.root')
-#inputs = glob(basedir + '/qcd_80to120*.root')
-#inputs = glob(basedir + '/qcd_120to170*.root')
-#inputs = glob(basedir + '/qcd_170to300*.root')
-#inputs = glob(basedir + '/qcd_300to470*.root')
-#inputs = glob(basedir + '/qcd_470to600*.root')
-#inputs = glob(basedir + '/qcd_600to800*.root')
-#inputs = glob(basedir + '/qcd_800to1000*.root')
-#inputs = glob(basedir + '/qcd_1000to1400*.root')
-#inputs = glob(basedir + '/wmunu*.root')
-
 from glob import glob
-inputs = glob(basedir + '/' + options.sample + '*.root')
+inputs = glob(options.basedir + '/ntuple_' + options.sample + '*.root')
 for i in inputs:
     process.source.fileNames.append('file:' + i)
 
@@ -102,46 +100,28 @@ process.configurationMetadata = cms.untracked.PSet(
 # Output definition
 
 process.TFileService = cms.Service("TFileService",
-                                       fileName = cms.string('histos_overlap_'+options.sample+'_allhadronic_v5.root')
+                                       fileName = cms.string('histos_overlap_'+options.sample+'_'+options.label+'.root')
                                    )
 
 process.overlapAnalyzer.processName = cms.string('reHLT')
 process.overlapAnalyzer.triggerResults = cms.InputTag("TriggerResults","","reHLT")
-#process.overlapAnalyzer.hltTriggerNames = cms.vstring('HLT_PFHT900_v1', 'HLT_PFHT650_4Jet_v1')
 process.overlapAnalyzer.xsec = cms.double(xsecs[options.sample])
+process.overlapAnalyzer.lumi = cms.double(1.4e34)
+#process.overlapAnalyzer.lumi = cms.double(7.0e33)
 process.overlapAnalyzer.verbose = cms.bool(False)
 
 process.overlapAnalyzer.hltTriggerNames = cms.vstring(
-  'HLT_PFHT900_v1',
-  'HLT_PFHT750_4Jet_v1',
-  'HLT_PFHT350_PFMET120_NoiseCleaned_v1',
-  'HLT_DiCentralPFJet70_PFMET120_NoiseCleaned_v1',
-  'HLT_HT200_DiJet90_AlphaT0p57_v1',
-  'HLT_HT250_DiJet90_AlphaT0p55_v1',
-  'HLT_HT300_DiJet90_AlphaT0p53_v1',
-  'HLT_HT350_DiJet90_AlphaT0p52_v1',
-  'HLT_HT400_DiJet90_AlphaT0p51_v1',
-  'HLT_RsqMR300_Rsq0p09_MR200_v1',
-  'HLT_RsqMR300_Rsq0p09_MR200_4jet_v1',
-  'HLT_Rsq0p36_v1',
-  'HLT_PFJet450_v1',
-  'HLT_CaloJet500_NoJetID_v1',
-  'HLT_AK8PFJet360TrimMod_Mass30_v1',
-  'HLT_AK8PFHT850_TrimR0p1PT0p03Mass50_v1',
-  'HLT_AK8DiPFJet280_200_TrimMass30_BTagCSV0p3_v1',
-  'HLT_PFHT650_WideJetMJJ900DEtaJJ1p5_v1',
-  'HLT_DiPFJet40_DEta3p5_MJJ600_PFMETNoMu140_v1',
-  'HLT_PFMET170_NoiseCleaned_v1',
-  'HLT_PFMET120_NoiseCleaned_BTagCSV07_v1',
-  'HLT_PFMET120_NoiseCleaned_Mu5_v1',
-  'HLT_Mu3er_PFHT140_PFMET125_NoiseCleaned_v1',
-  'HLT_Mu6_PFHT200_PFMET100_NoiseCleaned_BTagCSV07_v1',
-  'HLT_Mu6_PFHT200_PFMET125_NoiseCleaned_v1',
-  'HLT_Mu14er_PFMET120_NoiseCleaned_v1',
+	"HLT_PFHT350_PFMET120_NoiseCleaned_v1",
+	"HLT_PFHT900_v1",
+	"HLT_PFJet40_v1",
+	"HLT_PFJet60_v1",
+	"HLT_PFJet80_v1",
+	"HLT_PFJet140_v1",
+	"HLT_PFJet200_v1",
 )
 
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:hltonline_GRun', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, 'auto:hltonline', '')
 
 process.MessageLogger.cerr.FwkReport.reportEvery = 100000
 process.MessageLogger.categories.append('HLTrigReport')

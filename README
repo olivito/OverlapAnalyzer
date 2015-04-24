@@ -13,8 +13,17 @@ cmsenv
 git clone git@github.com:olivito/OverlapAnalyzer.git TrigAnalyzer/OverlapAnalyzer
 scram b -j 4
 
-Example config to run is in:
+An example of merging EDM files is given in:
+
+OverlapAnalyzer/test/merge_all.sh
+
+An example config to run is in:
 
 OverlapAnalyzer/test/ana_overlaps.py
+OverlapAnalyzer/test/run_overlaps.sh
 
-This file includes the cross sections for the samples used and can also configure the luminosity to normalize to.
+The .py file includes the cross sections for the samples used and can also configure the luminosity to normalize to.
+
+After running on each sample separately, simply hadd together the output files to get the total rates, for example:
+
+hadd rates_total.root rates_qcd_pt*.root
