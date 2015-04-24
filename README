@@ -1,0 +1,20 @@
+Contains code to run over EDM files containing the TriggerResults object and make plots of:
+
+- total rate w/ overlaps for a set of paths
+- individual rate of paths taken by themselves
+- exclusive rate of paths wrt a given set of other paths
+- 2D matrix of overlaps between paths
+
+To set up:
+
+cmsrel CMSSW_7_4_0_patch1
+cd CMSSW_7_4_0_patch1/src
+cmsenv
+git clone git@github.com:olivito/OverlapAnalyzer.git TrigAnalyzer/OverlapAnalyzer
+scram b -j 4
+
+Example config to run is in:
+
+OverlapAnalyzer/test/ana_overlaps.py
+
+This file includes the cross sections for the samples used and can also configure the luminosity to normalize to.
