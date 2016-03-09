@@ -48,7 +48,7 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   /// module config parameters
   std::string   processName_;
   std::vector<std::string> hltTriggerNames_;
-  edm::InputTag triggerResultsTag_;
+  edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
   double xsec_;
   double lumi_;
   bool verbose_;

@@ -25,7 +25,6 @@ using namespace edm;
 OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) : 
   processName_(ps.getParameter<std::string>("processName")),
   hltTriggerNames_(ps.getParameter<std::vector<std::string>>("hltTriggerNames")),
-  triggerResultsTag_(ps.getParameter<edm::InputTag>("triggerResults")),
   xsec_(ps.getParameter<double>("xsec")),
   lumi_(ps.getParameter<double>("lumi")),
   verbose_(ps.getParameter<bool>("verbose"))
@@ -43,7 +42,7 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
     cout << hltTriggerNames_.at(itrig) << ", ";
   }
   cout << endl
-       << "   TriggerResultsTag = " << triggerResultsTag_.encode() << endl
+       << "   TriggerResultsTag = " << ps.getParameter<edm::InputTag>("triggerResults").encode() << endl
        << "   xsec = " << xsec_ << endl
        << "   lumi = " << lumi_ << endl
        << "   Verbose = " << verbose_ << endl;
@@ -63,6 +62,9 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
     h_overlaps_->GetYaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
   }
 
+  // consumes statements
+  triggerResultsToken_ = consumes<edm::TriggerResults>(ps.getParameter<edm::InputTag>("triggerResults"));
+  
 }
 
 //____________________________________________________________________________
@@ -113,7 +115,7 @@ OverlapAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   if (verbose_) cout << endl;
 
   // get event products
-  iEvent.getByLabel(triggerResultsTag_,triggerResultsHandle_);
+  iEvent.getByToken(triggerResultsToken_,triggerResultsHandle_);
   if (!triggerResultsHandle_.isValid()) {
     cout << "OverlapAnalyzer::analyze: Error in getting TriggerResults product from Event!" << endl;
     return;
