@@ -14,6 +14,9 @@
 #include "TrigAnalyzer/OverlapAnalyzer/interface/OverlapAnalyzer.h"
 
 #include <cassert>
+#include <utility>
+
+#include "TString.h"
 
 using namespace reco;
 using namespace edm;
@@ -27,6 +30,11 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
   hltTriggerNames_(ps.getParameter<std::vector<std::string>>("hltTriggerNames")),
   xsec_(ps.getParameter<double>("xsec")),
   lumi_(ps.getParameter<double>("lumi")),
+  minPU_(ps.getParameter<double>("minPU")),
+  maxPU_(ps.getParameter<double>("maxPU")),
+  plotVsPU_(ps.getParameter<bool>("plotVsPU")),
+  rejectHardPU_(ps.getParameter<bool>("rejectHardPU")),
+  useMCweights_(ps.getParameter<bool>("useMCweights")),
   verbose_(ps.getParameter<bool>("verbose"))
 {
   using namespace std;
@@ -34,6 +42,7 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
 
   ntrigs_ = hltTriggerNames_.size();
   nevents_ = 0;
+  sumOfWeights_ = 0;
 
   cout << "OverlapAnalyzer configuration: " << endl
        << "   ProcessName = " << processName_ << endl
@@ -45,25 +54,39 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
        << "   TriggerResultsTag = " << ps.getParameter<edm::InputTag>("triggerResults").encode() << endl
        << "   xsec = " << xsec_ << endl
        << "   lumi = " << lumi_ << endl
+       << "   minPU = " << minPU_ << endl
+       << "   maxPU = " << maxPU_ << endl
+       << "   plotVsPU = " << plotVsPU_ << endl
+       << "   rejectHardPU = " << rejectHardPU_ << endl
+       << "   useMCweights = " << useMCweights_ << endl
        << "   Verbose = " << verbose_ << endl;
 
   // histogram setup
   edm::Service<TFileService> fs;
+  TH1::SetDefaultSumw2();
   h_menurate_ = fs->make<TH1D>("h_menurate" , ";Total Menu; Rate [Hz]" , 2 , -0.5 , 1.5 );
   h_rates_ = fs->make<TH1D>("h_rates" , ";; Rate [Hz]" , ntrigs_ , 0. , ntrigs_ );
   h_excl_rates_ = fs->make<TH1D>("h_excl_rates" , ";; Exclusive Rate [Hz]" , ntrigs_ , 0. , ntrigs_ );
   h_overlaps_ = fs->make<TH2D>("h_overlaps" , ";;; Rate [Hz]" , ntrigs_ , 0. , ntrigs_ , ntrigs_ , 0. , ntrigs_ );
 
-  // axis bin labels
+  // axis bin labels, rates vs PU
   for (unsigned int itrig = 0; itrig < ntrigs_; ++itrig) {
     h_rates_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
     h_excl_rates_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
     h_overlaps_->GetXaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
     h_overlaps_->GetYaxis()->SetBinLabel(itrig+1,formatTriggerName(hltTriggerNames_.at(itrig)).c_str());
+    if (plotVsPU_) {
+      TH1D* h_rate_vs_PU_trig = fs->make<TH1D>(Form("h_rate_vs_PU_%s",formatTriggerName(hltTriggerNames_.at(itrig)).c_str()),";PU; Relative Rate", 10,10,50);
+      h_rates_vs_PU_.insert(std::pair<std::string,TH1D*>(hltTriggerNames_.at(itrig),h_rate_vs_PU_trig));
+    }
   }
 
   // consumes statements
   triggerResultsToken_ = consumes<edm::TriggerResults>(ps.getParameter<edm::InputTag>("triggerResults"));
+  pthatToken_ = consumes<float>(edm::InputTag("genInfoMaker","pthat"));
+  pthatpumaxToken_ = consumes<float>(edm::InputTag("genInfoMaker","pthatpumax"));
+  trueNumInteractionsToken_ = consumes<std::vector<float> >(edm::InputTag("genInfoMaker","TrueNumInteractions"));
+  mcweightToken_ = consumes<float>(edm::InputTag("genInfoMaker","mcweight"));
   
 }
 
@@ -122,6 +145,39 @@ OverlapAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   }
   assert(triggerResultsHandle_->size()==hltConfig_.size());
 
+  if (rejectHardPU_) {
+    edm::Handle<float> pthatHandle;
+    iEvent.getByToken(pthatToken_,pthatHandle);
+
+    edm::Handle<float> pthatpumaxHandle;
+    iEvent.getByToken(pthatpumaxToken_,pthatpumaxHandle);
+    
+    // reject event if PU is harder than "hard scatter"
+    if (*pthatHandle < *pthatpumaxHandle) return;
+  }
+
+  edm::Handle<std::vector<float> > trueNumInteractionsHandle;
+  float nPU = -1.;
+  if (plotVsPU_ || (minPU_ > 0.)) {
+    iEvent.getByToken(trueNumInteractionsToken_,trueNumInteractionsHandle);
+    nPU = trueNumInteractionsHandle->front();
+
+    // make PU selection
+    if (!plotVsPU_) {
+      if (nPU < minPU_ || nPU > maxPU_) return;
+    }
+  }
+
+  float weight = 1.;
+  if (useMCweights_) {
+    edm::Handle<float> mcweightHandle;
+    iEvent.getByToken(mcweightToken_,mcweightHandle);
+
+    if (*mcweightHandle < 0.) weight = -1.;
+    sumOfWeights_ += int(weight);
+  }
+  
+  
   // double loop over triggers to see overlaps
   bool pass_event = false;
 
@@ -142,23 +198,26 @@ OverlapAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
   for (unsigned int itrig=0; itrig < ntrigs_; ++itrig) {
     bool pass1 = bool(trigResults.at(itrig));
     if (pass1) {
-      h_rates_->Fill(itrig);
+      h_rates_->Fill(itrig,weight);
+      if (plotVsPU_) {
+	h_rates_vs_PU_.at(hltTriggerNames_.at(itrig))->Fill(nPU,weight);
+      }
       pass_event = true;
     }
     bool pass_other = false;
     for (unsigned int jtrig=0; jtrig < ntrigs_; ++jtrig) {
       bool pass2 = bool(trigResults.at(jtrig));
-      if (pass1 && pass2) h_overlaps_->Fill(itrig,jtrig);
+      if (pass1 && pass2) h_overlaps_->Fill(itrig,jtrig,weight);
       if (pass2 && (itrig != jtrig)) pass_other = true;
     }
-    if (pass1 && !pass_other) h_excl_rates_->Fill(itrig);
+    if (pass1 && !pass_other) h_excl_rates_->Fill(itrig,weight);
   }
 
   // all events
-  h_menurate_->Fill(0.);
+  h_menurate_->Fill(0.,weight);
   ++nevents_;
   // events passing menu
-  if (pass_event) h_menurate_->Fill(1.);
+  if (pass_event) h_menurate_->Fill(1.,weight);
 
   if (verbose_) cout << endl;
 
@@ -222,10 +281,20 @@ void OverlapAnalyzer::endJob() {
   //  double ilumi = 1.4e34;
   double xs = xsec_ * 1.e-36;
   double norm = lumi_ * xs / double(nevents_);
+  if (useMCweights_) norm = lumi_ * xs / double(sumOfWeights_);
+  if (useMCweights_) {
+    std::cout << "nevents: " << nevents_ << ", sumOfWeights: " << sumOfWeights_ << std::endl;
+  }
   h_menurate_->Scale(norm);
   h_rates_->Scale(norm);
   h_excl_rates_->Scale(norm);
   h_overlaps_->Scale(norm);
+
+  if (plotVsPU_) {
+    for (unsigned int itrig=0; itrig < ntrigs_; ++itrig) {
+      h_rates_vs_PU_.at(hltTriggerNames_.at(itrig))->Scale(norm);
+    }
+  }
 
 }
 

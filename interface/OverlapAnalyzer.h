@@ -13,6 +13,8 @@
  *
  */
 
+#include <map>
+
 #include "FWCore/Framework/interface/Event.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
@@ -26,6 +28,7 @@
 
 #include "TH1.h"
 #include "TH2.h"
+#include "TString.h"
 
 //
 // class declaration
@@ -49,8 +52,17 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   std::string   processName_;
   std::vector<std::string> hltTriggerNames_;
   edm::EDGetTokenT<edm::TriggerResults> triggerResultsToken_;
+  edm::EDGetTokenT<float> pthatToken_;
+  edm::EDGetTokenT<float> pthatpumaxToken_;
+  edm::EDGetTokenT<std::vector<float> > trueNumInteractionsToken_;
+  edm::EDGetTokenT<float> mcweightToken_;
   double xsec_;
   double lumi_;
+  double minPU_;
+  double maxPU_;
+  bool plotVsPU_;
+  bool rejectHardPU_;
+  bool useMCweights_;
   bool verbose_;
 
   /// additional class data memebers
@@ -60,8 +72,10 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   TH1D* h_rates_;
   TH1D* h_excl_rates_;
   TH2D* h_overlaps_;
+  std::map<std::string,TH1D*> h_rates_vs_PU_;
   unsigned int ntrigs_;
   unsigned int nevents_;
+  int sumOfWeights_;
 
 };
 #endif

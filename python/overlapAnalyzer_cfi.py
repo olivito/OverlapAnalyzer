@@ -5,5 +5,8 @@ overlapAnalyzer = cms.EDAnalyzer("OverlapAnalyzer",
     hltTriggerNames = cms.vstring(""),
     triggerResults = cms.InputTag("TriggerResults","","reHLT"),
     weight = cms.double(1.),
-    verboase = cms.bool(False)
+    minPU = cms.double(-1.),
+    maxPU = cms.double(-1.),
+    rejectHardPU = cms.bool(False),
+    verbose = cms.bool(False)
 )
