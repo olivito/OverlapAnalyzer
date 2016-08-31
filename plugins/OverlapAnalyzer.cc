@@ -30,11 +30,14 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
   hltTriggerNames_(ps.getParameter<std::vector<std::string>>("hltTriggerNames")),
   xsec_(ps.getParameter<double>("xsec")),
   lumi_(ps.getParameter<double>("lumi")),
+  weight_(ps.getParameter<double>("weight")),
   minPU_(ps.getParameter<double>("minPU")),
   maxPU_(ps.getParameter<double>("maxPU")),
   plotVsPU_(ps.getParameter<bool>("plotVsPU")),
   rejectHardPU_(ps.getParameter<bool>("rejectHardPU")),
   useMCweights_(ps.getParameter<bool>("useMCweights")),
+  normByXsec_(ps.getParameter<bool>("normByXsec")),
+  normByWeight_(ps.getParameter<bool>("normByWeight")),
   verbose_(ps.getParameter<bool>("verbose"))
 {
   using namespace std;
@@ -54,11 +57,14 @@ OverlapAnalyzer::OverlapAnalyzer(const edm::ParameterSet& ps) :
        << "   TriggerResultsTag = " << ps.getParameter<edm::InputTag>("triggerResults").encode() << endl
        << "   xsec = " << xsec_ << endl
        << "   lumi = " << lumi_ << endl
+       << "   weight = " << weight_ << endl
        << "   minPU = " << minPU_ << endl
        << "   maxPU = " << maxPU_ << endl
        << "   plotVsPU = " << plotVsPU_ << endl
        << "   rejectHardPU = " << rejectHardPU_ << endl
        << "   useMCweights = " << useMCweights_ << endl
+       << "   normByXsec = " << normByXsec_ << endl
+       << "   normByWeight = " << normByWeight_ << endl
        << "   Verbose = " << verbose_ << endl;
 
   // histogram setup
@@ -278,13 +284,20 @@ bool OverlapAnalyzer::analyzeTrigger(const edm::Event& iEvent, const edm::EventS
 //____________________________________________________________________________
 void OverlapAnalyzer::endJob() {
 
+  double norm = 1.;
+  
   //  double ilumi = 1.4e34;
-  double xs = xsec_ * 1.e-36;
-  double norm = lumi_ * xs / double(nevents_);
-  if (useMCweights_) norm = lumi_ * xs / double(sumOfWeights_);
-  if (useMCweights_) {
-    std::cout << "nevents: " << nevents_ << ", sumOfWeights: " << sumOfWeights_ << std::endl;
+  if (normByXsec_) {
+    double xs = xsec_ * 1.e-36;
+    norm = lumi_ * xs / double(nevents_);
+    if (useMCweights_) {
+      norm = lumi_ * xs / double(sumOfWeights_);
+      std::cout << "nevents: " << nevents_ << ", sumOfWeights: " << sumOfWeights_ << std::endl;
+    }
   }
+  // allows to pass in a per-event weight, for data
+  else if (normByWeight_) norm = weight_;
+  
   h_menurate_->Scale(norm);
   h_rates_->Scale(norm);
   h_excl_rates_->Scale(norm);

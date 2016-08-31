@@ -8,5 +8,9 @@ overlapAnalyzer = cms.EDAnalyzer("OverlapAnalyzer",
     minPU = cms.double(-1.),
     maxPU = cms.double(-1.),
     rejectHardPU = cms.bool(False),
+    plotVsPU = cms.bool(False),
+    useMCweights = cms.bool(False),
+    normByXsec = cms.bool(False),
+    normByWeight = cms.bool(False),
     verbose = cms.bool(False)
 )

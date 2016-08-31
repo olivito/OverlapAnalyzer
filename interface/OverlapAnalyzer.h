@@ -58,11 +58,14 @@ class OverlapAnalyzer : public edm::EDAnalyzer {
   edm::EDGetTokenT<float> mcweightToken_;
   double xsec_;
   double lumi_;
+  double weight_;
   double minPU_;
   double maxPU_;
   bool plotVsPU_;
   bool rejectHardPU_;
   bool useMCweights_;
+  bool normByXsec_;
+  bool normByWeight_;
   bool verbose_;
 
   /// additional class data memebers
